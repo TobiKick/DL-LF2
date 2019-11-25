@@ -4,3 +4,6 @@ numpy
 opencv-python
 scipy
 selenium==3.8.0
+numpy
+tensorflow
+keras
