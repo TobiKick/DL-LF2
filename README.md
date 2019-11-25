@@ -9,18 +9,12 @@ Let it run with "python app.py"
 
 ------------------------------------------------------------------------------------------------------------------
 
-To start
-Env
-Make an LF2 environment.
-Note: The web driver will be closed automatically when the process exits.
 
+Make an LF2 environment.
 import lf2gym
 env = lf2gym.make()
-All parameters for make() are described here.
 
-Server
-Or if you simply want to run a LF2Server.
-
+Server - Simplyrun a LF2Server.
 import lf2gym
 lf2gym.start_server(port=8000)
 Open your browser, and connect to http://127.0.0.1:8000/game/game.html to play LF2!
