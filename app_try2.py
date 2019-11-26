@@ -17,18 +17,18 @@ import numpy as np
 from keras.optimizers import Adam
 from collections import deque
 
-############################# IMPORTANT PARAMETERS ########################################################
-EPISODES = 1000
-
-############################# SETUP LF2 ENVIRONMENT ########################################################
+############################# SETUP LF2 PARAMETERS ########################################################
 parser = argparse.ArgumentParser()
 parser.add_argument("--player", default=lf2gym.Character.Louis, help="your character") # the AI
 parser.add_argument("--opponent", default=lf2gym.Character.Freeze, help="your enemy") # the AI's enemy
 parser.add_argument("--interval", default=0.2, help="your enemy")
 args = parser.parse_args()
 
-# Add import path and import the lf2gym
+# Add import path for the lf2gym
 sys.path.append(os.path.abspath('..'))
+
+#
+EPISODES = 1000
 
 ########################### FORCE KERAS TO USE CPU #####################################################
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
