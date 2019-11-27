@@ -21,6 +21,8 @@ Project for the course Deep Learning Applications at National Taipei University 
 
 **Saving/Loading Model** Saving/Loading the Model / the agents progress
 
+**Benchmark/Results** Creating some measurement, how well our agent is doing and then comparing it to the paper -> same method helpful (https://arxiv.org/pdf/1805.02070.pdf)
+
 ------------------------------------------------------------------------------------------------------------------
 
 For further information have a look at 
