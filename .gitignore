@@ -12,3 +12,5 @@ debug.log
 ghostdriver.log
 lf2test.py
 .idea/*
+
+app_model/

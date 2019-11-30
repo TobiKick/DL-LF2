@@ -6,7 +6,6 @@ import os, sys
 
 #Import lf2gym
 import random
-
 import lf2gym
 from time import sleep
 
@@ -21,14 +20,16 @@ from collections import deque
 parser = argparse.ArgumentParser()
 parser.add_argument("--player", default=lf2gym.Character.Louis, help="your character") # the AI
 parser.add_argument("--opponent", default=lf2gym.Character.Freeze, help="your enemy") # the AI's enemy
-parser.add_argument("--interval", default=0.2, help="your enemy")
+parser.add_argument("--interval", default=0.9, help="your enemy")
 args = parser.parse_args()
 
 # Add import path for the lf2gym
 sys.path.append(os.path.abspath('..'))
 
-#
-EPISODES = 1000
+
+LOAD_PROGRESS_FROM_MODEL = False
+EPISODES = 2
+SAVE_PROGRESS_TO_MODEL = True
 
 ########################### FORCE KERAS TO USE CPU #####################################################
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -85,14 +86,26 @@ class DQNAgent:
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
 
+    def saveModel(self):
+        self.model.save_weights("./app_model/model.h5")
+        # serialize model to JSON
+        model_json = self.model.to_json()
+        with open("./app_model/model.json", "w") as json_file:
+            json_file.write(model_json)
+        print("Saved model to disk")
+
+    def loadModel(self):
+        self.model.load_weights("./app_model/model.h5")
+        print("Loaded model from disk")
+
 ############################# DEEP Q LEARNING ########################################################
 
 if __name__ == "__main__":
     # initialize gym environment and the agent
     env = lf2gym.make(startServer=True, driverType=lf2gym.WebDriver.Chrome,
                       background=lf2gym.Background.HK_Coliseum,
-                      characters=[args.opponent, args.player], #[dumb bot, AI]
-                      difficulty=lf2gym.Difficulty.Challengar,
+                      characters=[args.player, args.opponent], #[Me/AI, bot]
+                      difficulty=lf2gym.Difficulty.Crusher,
                       versusPlayer=False) # versusPlayer= False means Agent is playing against bot instedad of user
 
     state_size = env.observation_space.n[0] * env.observation_space.n[1]
@@ -101,6 +114,9 @@ if __name__ == "__main__":
     print("action_size: " + str(action_size))
 
     agent = DQNAgent(state_size, action_size)
+    if LOAD_PROGRESS_FROM_MODEL:
+        agent.loadModel()
+
     done = False
     batch_size = 32
     # Iterate the game
@@ -122,6 +138,10 @@ if __name__ == "__main__":
                 print("episode: {}/{}, score: {}"
                       .format(e, EPISODES, time_t))
                 break
-        # train the agent with the experience of the episode
+            # train the agent with the experience of the episode
             if len(agent.memory) > batch_size:
                 agent.replay(batch_size)
+
+        # save progress to model after finishing the last episode
+        if e == (EPISODES - 1):
+            agent.saveModel()
