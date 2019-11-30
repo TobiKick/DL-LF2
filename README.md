@@ -19,8 +19,6 @@ Project for the course Deep Learning Applications at National Taipei University 
 
 **Optimization** Having a look at optimizing the Q function/learning reward, as the model is based on a simpler game and I think there should be some improvements possible when looking at the utilized data from the game
 
-**Saving/Loading Model** Saving/Loading the Model / the agents progress
-
 **Benchmark/Results** Creating some measurement, how well our agent is doing and then comparing it to the paper -> same method helpful (https://arxiv.org/pdf/1805.02070.pdf)
 
 ------------------------------------------------------------------------------------------------------------------
