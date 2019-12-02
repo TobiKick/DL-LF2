@@ -13,13 +13,6 @@ Project for the course Deep Learning Applications at National Taipei University 
 
 **"python app.py"** Let your code run
 
-------------------------------------------------------------------------------------------------------------------
-###### *NEXT STEPS / POINTS TO WORK ON: **
-**Model creation** - Develop a Model maybe with LSTM (https://arxiv.org/pdf/1805.02070.pdf)
-
-**Benchmark/Results** - Creating some measurement, how well our agent is doing and then comparing it to the paper -> same method helpful (https://arxiv.org/pdf/1805.02070.pdf)
-
-(When there is time left: **Optimization** - Having a look at optimizing the Q function/learning reward)
 
 ------------------------------------------------------------------------------------------------------------------
 

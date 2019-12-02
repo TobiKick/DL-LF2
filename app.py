@@ -10,7 +10,7 @@ import lf2gym
 from time import sleep
 
 #Import Keras modules
-from keras.layers import Dense, Flatten, Input
+from keras.layers import Dense, Flatten, Input, Conv2D, LSTM, concatenate, Concatenate, Reshape
 from keras import Model, Sequential
 import numpy as np
 from keras.optimizers import Adam
@@ -28,7 +28,7 @@ sys.path.append(os.path.abspath('..'))
 
 
 LOAD_PROGRESS_FROM_MODEL = False
-EPISODES = 2
+EPISODES = 2  # SET TO 1000 to comparably calculate winning rate
 SAVE_PROGRESS_TO_MODEL = True
 HEADLESS = False
 
@@ -43,8 +43,9 @@ os.environ["CUDA_VISIBLE_DEVICES"] = ""
 # AS WELL AS UNDER THIS LINK: https://github.com/keon/deep-q-learning/blob/master/dqn.py
 
 class DQNAgent:
-    def __init__(self, state_size, action_size):
-        self.state_size = state_size
+    def __init__(self, state_size_x, state_size_y, action_size):
+        self.state_size_x = state_size_x
+        self.state_size_y = state_size_y
         self.action_size = action_size
         self.memory = deque(maxlen=2000)
         self.gamma = 0.95    # discount rate
@@ -56,12 +57,23 @@ class DQNAgent:
 
     def _build_model(self):
         # Neural Net for Deep-Q learning Model
-        model = Sequential()
-        model.add(Dense(24, input_dim=self.state_size, activation='relu'))
-        model.add(Dense(24, activation='relu'))
-        model.add(Dense(self.action_size, activation='linear'))
-        model.compile(loss='mse',
-                      optimizer=Adam(lr=self.learning_rate))
+        input = Input(shape=(state_size_x, state_size_y, 1))
+
+        model = Conv2D(32, kernel_size=(8,8), strides=4, padding="same", activation='relu')(input)
+        model = Conv2D(64, kernel_size=(4,4), strides=2, padding="same", activation='relu')(model)
+        model = Conv2D(64, kernel_size=(3,3), strides=1, padding="same", activation='relu')(model)
+
+        # concatenate + flatten ( when using additional input )
+        # model = Concatenate(axis=0)(model)
+
+        #model = Reshape((64, 64))(model)
+        #model = LSTM(512)(model)
+        
+        model = Flatten()(model)
+        output = Dense(self.action_size, activation='linear')(model)
+        model = Model(inputs=input, outputs=output)
+        model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
+        model.summary()
         return model
 
     def remember(self, state, action, reward, next_state, done):
@@ -107,32 +119,35 @@ if __name__ == "__main__":
                       background=lf2gym.Background.HK_Coliseum,
                       characters=[args.player, args.opponent], #[Me/AI, bot]
                       difficulty=lf2gym.Difficulty.Crusher,
+                      action_options= ['Basic', 'AJD', 'Full Combos'],     # ['Basic', 'AJD', 'Full Combos']   # defines action space
                       headless=HEADLESS,
                       versusPlayer=False) # versusPlayer= False means Agent is playing against bot instedad of user
 
-    state_size = env.observation_space.n[0] * env.observation_space.n[1]
-    print("state_size: " + str(state_size))
+    state_size_x = env.observation_space.n[0]
+    state_size_y = env.observation_space.n[1]
+    print("state_size: (" + str(state_size_x) + ", " + str(state_size_y) + ")")
     action_size = int(env.action_space.n)
     print("action_size: " + str(action_size))
 
-    agent = DQNAgent(state_size, action_size)
+    agent = DQNAgent(state_size_x, state_size_y, action_size)
     if LOAD_PROGRESS_FROM_MODEL:
         agent.loadModel()
 
     done = False
     batch_size = 32
+    wins = 0
     # Iterate the game
     for e in range(EPISODES):
         # reset state in the beginning of each game
         state = env.reset()   # returns 243200 for our game as screen size input (160,380,4)
-        state = np.reshape(state, [4, state_size])   # chose here 4, (160*380)  this equals the screen size with 4 (frames?)
+        state = np.reshape(state, (4, state_size_x, state_size_y, 1))
         for time_t in range(500):
             # env.render()  # no need to activate render
             action = agent.act(state)
             next_state, reward, done, _ = env.step(action)
-            reward = reward if not done else -10
+            reward = reward if not done else -10  # punishes the agent if the game takes too long
 
-            next_state = np.reshape(next_state, [4, state_size])
+            next_state = np.reshape(next_state, (4, state_size_x, state_size_y, 1))
             agent.remember(state, action, reward, next_state, done)  # Remember the previous state, action, reward, and done
             state = next_state  # make next_state the new current state for the next frame.
 
@@ -144,6 +159,11 @@ if __name__ == "__main__":
             if len(agent.memory) > batch_size:
                 agent.replay(batch_size)
 
+        print(env.get_detail()[0])
+        if env.get_detail()[0].get('hp') == 0:    # [0] is player (=agent), [1] is opponent (=bot)
+            wins += 1
         # save progress to model after finishing the last episode
         if e == (EPISODES - 1):
+            winningRate = wins/(e+1)
+            print("# Wins: " + str(wins) + ", # Episodes: " + str(e) + ", Winning Rate: " + str(winningRate))
             agent.saveModel()
