@@ -30,6 +30,7 @@ sys.path.append(os.path.abspath('..'))
 LOAD_PROGRESS_FROM_MODEL = False
 EPISODES = 2
 SAVE_PROGRESS_TO_MODEL = True
+HEADLESS = False
 
 ########################### FORCE KERAS TO USE CPU #####################################################
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -87,15 +88,15 @@ class DQNAgent:
             self.epsilon *= self.epsilon_decay
 
     def saveModel(self):
-        self.model.save_weights("./app_model/model.h5")
+        self.model.save_weights("app_model/model.h5")
         # serialize model to JSON
         model_json = self.model.to_json()
-        with open("./app_model/model.json", "w") as json_file:
+        with open("app_model/model.json", "w") as json_file:
             json_file.write(model_json)
         print("Saved model to disk")
 
     def loadModel(self):
-        self.model.load_weights("./app_model/model.h5")
+        self.model.load_weights("app_model/model.h5")
         print("Loaded model from disk")
 
 ############################# DEEP Q LEARNING ########################################################
@@ -106,6 +107,7 @@ if __name__ == "__main__":
                       background=lf2gym.Background.HK_Coliseum,
                       characters=[args.player, args.opponent], #[Me/AI, bot]
                       difficulty=lf2gym.Difficulty.Crusher,
+                      headless=HEADLESS,
                       versusPlayer=False) # versusPlayer= False means Agent is playing against bot instedad of user
 
     state_size = env.observation_space.n[0] * env.observation_space.n[1]
@@ -130,7 +132,7 @@ if __name__ == "__main__":
             next_state, reward, done, _ = env.step(action)
             reward = reward if not done else -10
 
-            next_state = np.reshape(next_state, [4, (160*380)])
+            next_state = np.reshape(next_state, [4, state_size])
             agent.remember(state, action, reward, next_state, done)  # Remember the previous state, action, reward, and done
             state = next_state  # make next_state the new current state for the next frame.
 
