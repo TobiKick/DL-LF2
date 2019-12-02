@@ -63,13 +63,14 @@ class DQNAgent:
         model = Conv2D(64, kernel_size=(4,4), strides=2, padding="same", activation='relu')(model)
         model = Conv2D(64, kernel_size=(3,3), strides=1, padding="same", activation='relu')(model)
 
-        # concatenate + flatten ( when using additional input )
-        # model = Concatenate(axis=0)(model)
+        # IN PROGRESS: ADDING IDITIONAL PLAYER-SPECIFIC INFORMATION INTO THE MODEL
+            # concatenate + flatten ( when using additional input )
+            # model = Concatenate(axis=0)(model)
 
-        #model = Reshape((64, 64))(model)
-        #model = LSTM(512)(model)
-        
-        model = Flatten()(model)
+        model = Reshape((960, 64))(model)
+        model = LSTM(512)(model)
+
+        #model = Flatten()(model)
         output = Dense(self.action_size, activation='linear')(model)
         model = Model(inputs=input, outputs=output)
         model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
