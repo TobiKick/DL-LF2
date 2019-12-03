@@ -39,9 +39,6 @@ os.environ["CUDA_VISIBLE_DEVICES"] = ""
 ############################# SETUP THE DEEP Q AGENT ########################################################
 # Deep Q-learning Agent
 
-# FIND INFORMATION WITH LINK: https://keon.io/deep-q-learning/
-# AS WELL AS UNDER THIS LINK: https://github.com/keon/deep-q-learning/blob/master/dqn.py
-
 class DQNAgent:
     def __init__(self, state_size_x, state_size_y, action_size):
         self.state_size_x = state_size_x
@@ -57,23 +54,25 @@ class DQNAgent:
 
     def _build_model(self):
         # Neural Net for Deep-Q learning Model
-        input = Input(shape=(state_size_x, state_size_y, 1))
-
+        input = Input(shape=(state_size_x, state_size_y, 4))
         model = Conv2D(32, kernel_size=(8,8), strides=4, padding="same", activation='relu')(input)
         model = Conv2D(64, kernel_size=(4,4), strides=2, padding="same", activation='relu')(model)
         model = Conv2D(64, kernel_size=(3,3), strides=1, padding="same", activation='relu')(model)
+        model = Flatten()(model)
 
-        # IN PROGRESS: ADDING IDITIONAL PLAYER-SPECIFIC INFORMATION INTO THE MODEL
-            # concatenate + flatten ( when using additional input )
-            # model = Concatenate(axis=0)(model)
+        input_agent_info = Input(shape=(8,))
+        input_action = Input(shape=(1,))
 
-        model = Reshape((960, 64))(model)
-        model = LSTM(512)(model)
+        merge = Concatenate()([model, input_agent_info, input_action])
 
-        #model = Flatten()(model)
-        output = Dense(self.action_size, activation='linear')(model)
-        model = Model(inputs=input, outputs=output)
-        model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
+        ## output = Dense(self.action_size, activation='relu')(merge)
+        ## model = Model(inputs=[input, input_agent_info], outputs=output)
+        ## model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
+
+        output = Dense(self.action_size, activation='sigmoid')(merge)
+        model = Model(inputs=[input, input_agent_info, input_action], outputs=output)
+        model.compile(loss='binary_crossentropy', optimizer=Adam(lr=self.learning_rate))
+
         model.summary()
         return model
 
@@ -85,17 +84,17 @@ class DQNAgent:
         if np.random.rand() <= self.epsilon:
             return random.randrange(self.action_size)
         act_values = self.model.predict(state)
-        return np.argmax(act_values[0])  # returns action
+        return np.argmax(act_values[0])  # returns index of action with highges probability
 
     def replay(self, batch_size):
         minibatch = random.sample(self.memory, batch_size)
         for state, action, reward, next_state, done in minibatch:
             target = reward
             if not done:
-                target = reward + self.gamma * \
-                         np.amax(self.model.predict(next_state)[0])
-            target_f = self.model.predict(state)
-            target_f[0][action] = target
+                target = reward + self.gamma * np.amax(self.model.predict(next_state)[0])
+
+            target_f = self.model.predict(state)  # predicting probability for each action
+            target_f[0][action] = target  # replacing the past action with target probability
             self.model.fit(state, target_f, epochs=1, verbose=0)
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
@@ -137,18 +136,34 @@ if __name__ == "__main__":
     done = False
     batch_size = 32
     wins = 0
+    action_last_episode = 0
     # Iterate the game
     for e in range(EPISODES):
         # reset state in the beginning of each game
         state = env.reset()   # returns 243200 for our game as screen size input (160,380,4)
-        state = np.reshape(state, (4, state_size_x, state_size_y, 1))
+
+        player_info = env.get_detail()[0]
+        player_info = np.array((player_info.get('hp'), player_info.get('mp'), player_info.get('x'), player_info.get('y'),
+                       player_info.get('z'), player_info.get('vx'), player_info.get('vy'), player_info.get('vz')))
+
+        _state = np.reshape(state, (1, state_size_x, state_size_y, 4))
+        _player_info = np.reshape(player_info, (1, 8))
+        _action_last_episode = np.reshape(action_last_episode, (1, 1))
+        state = [_state, _player_info, _action_last_episode]
         for time_t in range(500):
             # env.render()  # no need to activate render
             action = agent.act(state)
             next_state, reward, done, _ = env.step(action)
             reward = reward if not done else -10  # punishes the agent if the game takes too long
 
-            next_state = np.reshape(next_state, (4, state_size_x, state_size_y, 1))
+            player_info = env.get_detail()[0]
+            player_info = np.array((player_info.get('hp'), player_info.get('mp'), player_info.get('x'), player_info.get('y'),
+                                    player_info.get('z'), player_info.get('vx'), player_info.get('vy'), player_info.get('vz')))
+
+            _next_state = np.reshape(next_state, (1, state_size_x, state_size_y, 4))
+            _player_info = np.reshape(player_info, (1, 8))
+            _action = np.reshape(action, (1, 1))
+            next_state = [_next_state, _player_info, _action]
             agent.remember(state, action, reward, next_state, done)  # Remember the previous state, action, reward, and done
             state = next_state  # make next_state the new current state for the next frame.
 
@@ -158,9 +173,9 @@ if __name__ == "__main__":
                 break
             # train the agent with the experience of the episode
             if len(agent.memory) > batch_size:
+                action_last_episode = action
                 agent.replay(batch_size)
 
-        print(env.get_detail()[0])
         if env.get_detail()[0].get('hp') == 0:    # [0] is player (=agent), [1] is opponent (=bot)
             wins += 1
         # save progress to model after finishing the last episode
