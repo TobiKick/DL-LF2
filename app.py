@@ -60,16 +60,13 @@ class DQNAgent:
         model = Conv2D(64, kernel_size=(3,3), strides=1, padding="same", activation='relu')(model)
         model = Flatten()(model)
 
-        input_agent_info = Input(shape=(8,))
+        input_agent_info = Input(shape=(16,))
         input_action = Input(shape=(1,))
 
         merge = Concatenate()([model, input_agent_info, input_action])
 
-        ## output = Dense(self.action_size, activation='relu')(merge)
-        ## model = Model(inputs=[input, input_agent_info], outputs=output)
-        ## model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
-
-        output = Dense(self.action_size, activation='sigmoid')(merge)
+        output = Dense(256, activation='relu')(merge)
+        output = Dense(self.action_size, activation='sigmoid')(output)
         model = Model(inputs=[input, input_agent_info, input_action], outputs=output)
         model.compile(loss='binary_crossentropy', optimizer=Adam(lr=self.learning_rate))
 
@@ -86,16 +83,18 @@ class DQNAgent:
         act_values = self.model.predict(state)
         return np.argmax(act_values[0])  # returns index of action with highges probability
 
+    # DQN with Experience replay
     def replay(self, batch_size):
         minibatch = random.sample(self.memory, batch_size)
+
         for state, action, reward, next_state, done in minibatch:
             target = reward
             if not done:
                 target = reward + self.gamma * np.amax(self.model.predict(next_state)[0])
-
             target_f = self.model.predict(state)  # predicting probability for each action
             target_f[0][action] = target  # replacing the past action with target probability
             self.model.fit(state, target_f, epochs=1, verbose=0)
+
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
 
@@ -105,13 +104,27 @@ class DQNAgent:
         model_json = self.model.to_json()
         with open("app_model/model.json", "w") as json_file:
             json_file.write(model_json)
+        with open("app_model/epsilon.txt", "w") as txt_file:
+            txt_file.write(self.epsilon)
         print("Saved model to disk")
 
     def loadModel(self):
         self.model.load_weights("app_model/model.h5")
+        with open("app_model/epsilon.txt", "r") as txt_file:
+            self.epsilon = int(txt_file.readline())
         print("Loaded model from disk")
 
 ############################# DEEP Q LEARNING ########################################################
+
+def getPlayerInformation(env_details):
+    player1_info = env_details[0]
+    player2_info = env_details[1]
+    player_info = np.array((player1_info.get('hp'), player1_info.get('mp'), player1_info.get('x'), player1_info.get('y'),
+                            player1_info.get('z'), player1_info.get('vx'), player1_info.get('vy'), player1_info.get('vz'),
+                            player2_info.get('hp'), player2_info.get('mp'), player2_info.get('x'), player2_info.get('y'),
+                            player2_info.get('z'), player2_info.get('vx'), player2_info.get('vy'), player2_info.get('vz')))
+    return player_info
+
 
 if __name__ == "__main__":
     # initialize gym environment and the agent
@@ -142,12 +155,9 @@ if __name__ == "__main__":
         # reset state in the beginning of each game
         state = env.reset()   # returns 243200 for our game as screen size input (160,380,4)
 
-        player_info = env.get_detail()[0]
-        player_info = np.array((player_info.get('hp'), player_info.get('mp'), player_info.get('x'), player_info.get('y'),
-                       player_info.get('z'), player_info.get('vx'), player_info.get('vy'), player_info.get('vz')))
-
+        player_info = getPlayerInformation(env.get_detail())
         _state = np.reshape(state, (1, state_size_x, state_size_y, 4))
-        _player_info = np.reshape(player_info, (1, 8))
+        _player_info = np.reshape(player_info, (1, 16))
         _action_last_episode = np.reshape(action_last_episode, (1, 1))
         state = [_state, _player_info, _action_last_episode]
         for time_t in range(500):
@@ -157,12 +167,9 @@ if __name__ == "__main__":
             reward = reward if not done else -10  # punishes the agent if the game takes too long
 
             if(env.get_detail() != None):
-                player_info = env.get_detail()[0]
-                player_info = np.array((player_info.get('hp'), player_info.get('mp'), player_info.get('x'), player_info.get('y'),
-                                    player_info.get('z'), player_info.get('vx'), player_info.get('vy'), player_info.get('vz')))
-
+                player_info = getPlayerInformation(env.get_detail())
             _next_state = np.reshape(next_state, (1, state_size_x, state_size_y, 4))
-            _player_info = np.reshape(player_info, (1, 8))
+            _player_info = np.reshape(player_info, (1, 16))
             _action = np.reshape(action, (1, 1))
             next_state = [_next_state, _player_info, _action]
             agent.remember(state, action, reward, next_state, done)  # Remember the previous state, action, reward, and done
@@ -183,4 +190,5 @@ if __name__ == "__main__":
         if e == (EPISODES - 1):
             winningRate = wins/(e+1)
             print("# Wins: " + str(wins) + ", # Episodes: " + str(e+1) + ", Winning Rate: " + str(winningRate))
+            print("# Current epsilon: " + str(agent.epsilon))
             agent.saveModel()
