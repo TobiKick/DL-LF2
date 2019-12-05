@@ -5,5 +5,4 @@ opencv-python
 scipy==1.2.0
 selenium==3.8.0
 pillow
-tensorflow
 keras

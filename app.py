@@ -33,8 +33,8 @@ SAVE_PROGRESS_TO_MODEL = True
 HEADLESS = False
 
 ########################### FORCE KERAS TO USE CPU #####################################################
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+# os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 ############################# SETUP THE DEEP Q AGENT ########################################################
 # Deep Q-learning Agent
@@ -69,7 +69,7 @@ class DQNAgent:
         ## model = Model(inputs=[input, input_agent_info], outputs=output)
         ## model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
 
-        output = Dense(self.action_size, activation='relu')(merge)
+        output = Dense(self.action_size, activation='sigmoid')(merge)
         model = Model(inputs=[input, input_agent_info, input_action], outputs=output)
         model.compile(loss='binary_crossentropy', optimizer=Adam(lr=self.learning_rate))
 
@@ -92,8 +92,8 @@ class DQNAgent:
             target = reward
             if not done:
                 target = reward + self.gamma * np.amax(self.model.predict(next_state)[0])
+
             target_f = self.model.predict(state)  # predicting probability for each action
-            print(target_f)
             target_f[0][action] = target  # replacing the past action with target probability
             self.model.fit(state, target_f, epochs=1, verbose=0)
         if self.epsilon > self.epsilon_min:
@@ -101,17 +101,14 @@ class DQNAgent:
 
     def saveModel(self):
         self.model.save_weights("app_model/model.h5")
+        # serialize model to JSON
         model_json = self.model.to_json()
         with open("app_model/model.json", "w") as json_file:
             json_file.write(model_json)
-        with open("app_model/epsilon.txt", "w") as txt_file:
-            txt_file.write(self.epsilon)
         print("Saved model to disk")
 
     def loadModel(self):
         self.model.load_weights("app_model/model.h5")
-        with open("app_model/epsilon.txt", "w") as txt_file:
-            self.epsilon = int(txt_file.readline())
         print("Loaded model from disk")
 
 ############################# DEEP Q LEARNING ########################################################
@@ -159,8 +156,9 @@ if __name__ == "__main__":
             next_state, reward, done, _ = env.step(action)
             reward = reward if not done else -10  # punishes the agent if the game takes too long
 
-            player_info = env.get_detail()[0]
-            player_info = np.array((player_info.get('hp'), player_info.get('mp'), player_info.get('x'), player_info.get('y'),
+            if(env.get_detail() != None):
+                player_info = env.get_detail()[0]
+                player_info = np.array((player_info.get('hp'), player_info.get('mp'), player_info.get('x'), player_info.get('y'),
                                     player_info.get('z'), player_info.get('vx'), player_info.get('vy'), player_info.get('vz')))
 
             _next_state = np.reshape(next_state, (1, state_size_x, state_size_y, 4))
@@ -184,6 +182,5 @@ if __name__ == "__main__":
         # save progress to model after finishing the last episode
         if e == (EPISODES - 1):
             winningRate = wins/(e+1)
-            print("# Wins: " + str(wins) + ", # Episodes: " + str(e) + ", # Winning Rate: " + str(winningRate))
-            print("# Current epsilon: " + str(agent.epsilon))
+            print("# Wins: " + str(wins) + ", # Episodes: " + str(e+1) + ", Winning Rate: " + str(winningRate))
             agent.saveModel()
