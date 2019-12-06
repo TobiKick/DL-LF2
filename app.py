@@ -44,72 +44,100 @@ class DQNAgent:
         self.state_size_x = state_size_x
         self.state_size_y = state_size_y
         self.action_size = action_size
-        self.memory = deque(maxlen=2000)
         self.gamma = 0.95    # discount rate
         self.epsilon = 1.0  # exploration rate
         self.epsilon_min = 0.01
         self.epsilon_decay = 0.995
         self.learning_rate = 0.001
-        self.model = self._build_model()
+        self.model_actor = self._build_model_actor()
+        self.model_critic = self._build_model_critic()
 
-    def _build_model(self):
-        # Neural Net for Deep-Q learning Model
-        input = Input(shape=(state_size_x, state_size_y, 4))
+    def shared_model(self, input, input_agent_info, input_action):
         model = Conv2D(32, kernel_size=(8,8), strides=4, padding="same", activation='relu')(input)
         model = Conv2D(64, kernel_size=(4,4), strides=2, padding="same", activation='relu')(model)
         model = Conv2D(64, kernel_size=(3,3), strides=1, padding="same", activation='relu')(model)
         model = Flatten()(model)
 
+        merge = Concatenate()([model, input_agent_info, input_action])
+        reshape = Reshape((61457, 1))(merge)
+        output = LSTM(64, input_shape=(61457, 1))(reshape)
+        return output
+
+    def _build_model_actor(self):
+        # Neural Net for the Actor of Actor-Critic-Model
+        # defining inputs
+        input = Input(shape=(state_size_x, state_size_y, 4))
         input_agent_info = Input(shape=(16,))
         input_action = Input(shape=(1,))
 
-        merge = Concatenate()([model, input_agent_info, input_action])
+        # calling shared model (shared weights)
+        output = self.shared_model(input, input_agent_info, input_action)
 
-        output = Dense(256, activation='relu')(merge)
-        output = Dense(self.action_size, activation='sigmoid')(output)
+        # defining residual model + output
+        output = Dense(32, activation='relu')(output)
+        output = Dense(self.action_size, activation='softmax')(output)
+
         model = Model(inputs=[input, input_agent_info, input_action], outputs=output)
         model.compile(loss='binary_crossentropy', optimizer=Adam(lr=self.learning_rate))
 
         model.summary()
         return model
 
-    def remember(self, state, action, reward, next_state, done):
-        # for remembering past actions taking -> to help make better decisions
-        self.memory.append((state, action, reward, next_state, done))
+    def _build_model_critic(self):
+        # Neural Net for the Critic of Actor-Critic-Model
+        # defining inputs
+        input = Input(shape=(state_size_x, state_size_y, 4))
+        input_agent_info = Input(shape=(16,))
+        input_action = Input(shape=(1,))
+
+        # calling shared model (shared weights)
+        output = self.shared_model(input, input_agent_info, input_action)
+
+        # defining residual model + output
+        output = Dense(64, activation='relu')(output)
+        output = Dense(self.action_size, activation='relu')(output)
+
+        model = Model(inputs=[input, input_agent_info, input_action], outputs=output)
+        model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
+
+        model.summary()
+        return model
 
     def act(self, state):
         if np.random.rand() <= self.epsilon:
             return random.randrange(self.action_size)
-        act_values = self.model.predict(state)
+        act_values = self.model_actor.predict(state)
         return np.argmax(act_values[0])  # returns index of action with highges probability
 
-    # DQN with Experience replay
-    def replay(self, batch_size):
-        minibatch = random.sample(self.memory, batch_size)
-
-        for state, action, reward, next_state, done in minibatch:
-            target = reward
-            if not done:
-                target = reward + self.gamma * np.amax(self.model.predict(next_state)[0])
-            target_f = self.model.predict(state)  # predicting probability for each action
-            target_f[0][action] = target  # replacing the past action with target probability
-            self.model.fit(state, target_f, epochs=1, verbose=0)
+    # A2C training after every action taken
+    def train(self, state, action, reward, next_state, done):
+        target = reward
+        if not done:
+            target = reward + self.gamma * np.amax(self.model_critic.predict(next_state)[0])
+        target_f = self.model_critic.predict(state)  # predicting probability for each action
+        target_f[0][action] = target  # replacing the past action with target probability
+        self.model_critic.fit(state, target_f, epochs=1, verbose=0)
 
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
 
     def saveModel(self):
-        self.model.save_weights("app_model/model.h5")
+        self.model_critic.save_weights("app_model/critic.h5")
+        self.model_actor.save_weights("app_model/actor.h5")
         # serialize model to JSON
-        model_json = self.model.to_json()
-        with open("app_model/model.json", "w") as json_file:
-            json_file.write(model_json)
+        model_json_critic = self.model_critic.to_json()
+        with open("app_model/critic.json", "w") as json_file:
+            json_file.write(model_json_critic)
+        model_json_actor = self.model_actor.to_json()
+        with open("app_model/actor.json", "w") as json_file:
+            json_file.write(model_json_actor)
         with open("app_model/epsilon.txt", "w") as txt_file:
             txt_file.write(self.epsilon)
         print("Saved model to disk")
 
     def loadModel(self):
-        self.model.load_weights("app_model/model.h5")
+        self.model_critic.load_weights("app_model/critic.h5")
+        self.model_actor.load_weights("app_model/actor.h5")
         with open("app_model/epsilon.txt", "r") as txt_file:
             self.epsilon = int(txt_file.readline())
         print("Loaded model from disk")
@@ -172,17 +200,14 @@ if __name__ == "__main__":
             _player_info = np.reshape(player_info, (1, 16))
             _action = np.reshape(action, (1, 1))
             next_state = [_next_state, _player_info, _action]
-            agent.remember(state, action, reward, next_state, done)  # Remember the previous state, action, reward, and done
+
+            agent.train(state, action, reward, next_state, done)  # Remember the previous state, action, reward, and done
             state = next_state  # make next_state the new current state for the next frame.
 
             if done: # # done becomes True when the game ends
                 print("episode: {}/{}, score: {}"
                       .format(e, EPISODES, time_t))
                 break
-            # train the agent with the experience of the episode
-            if len(agent.memory) > batch_size:
-                action_last_episode = action
-                agent.replay(batch_size)
 
         if env.get_detail()[0].get('hp') == 0:    # [0] is player (=agent), [1] is opponent (=bot)
             wins += 1
