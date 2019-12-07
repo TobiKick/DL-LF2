@@ -17,7 +17,7 @@ from keras.layers import Dense, Flatten, Input, Conv2D, LSTM, concatenate, Conca
 from keras import Model, Sequential
 import numpy as np
 from keras.optimizers import Adam
-from collections import deque
+import keras.backend as K
 
 ############################# SETUP LF2 PARAMETERS ########################################################
 parser = argparse.ArgumentParser()
@@ -53,11 +53,12 @@ class DQNAgent:
         self.epsilon_min = 0.01
         self.epsilon_decay = 0.995
         self.learning_rate = 0.001
-        self.model = _build_model()
-        self.model_actor = self._build_model_actor()
-        self.model_critic = self._build_model_critic()
+        self.model = self._build_model()
 
-    def model(self, input, input_agent_info, input_action):
+    def logloss(self, y_true, y_pred):     #policy loss
+        return -K.sum( K.log(y_true*y_pred + (1-y_true)*(1-y_pred) + 1e-5), axis=-1)
+
+    def _build_model(self):
         input = Input(shape=(state_size_x, state_size_y, 4))
 
         model = Conv2D(32, kernel_size=(8,8), strides=4, padding="same", activation='relu')(input)
@@ -72,11 +73,11 @@ class DQNAgent:
         output = LSTM(64, input_shape=(61457, 1))(reshape)
         output = Dense(32, activation='relu')(output)
 
-        actions_out = Dense(self.action_size, activation='softmax')(output)
-        V_out = Dense(1, activation='linear')(output)
+        actions_out = Dense(self.action_size,  name = 'o_Policy', activation='softmax')(output)
+        value_out = Dense(1,  name = 'o_Value', activation='linear')(output)
 
-        model = Model(inputs=[input, input_agent_info, input_action], outputs=[actions_out, V_out])
-        model.compile(loss=['mse', 'mse'], optimizer=Adam(lr=self.learning_rate))
+        model = Model(inputs=[input, input_agent_info, input_action], outputs=[actions_out, value_out])
+        model.compile(loss = {'o_Policy': self.logloss, 'o_Value': 'mse'},  loss_weights = {'o_Policy': 1., 'o_Value' : 0.5}, optimizer=Adam(lr=self.learning_rate))
 
         model.summary()
         return model
@@ -85,7 +86,7 @@ class DQNAgent:
     def act(self, state):
         if np.random.rand() <= self.epsilon:
             return random.randrange(self.action_size)
-        act_values = self.model_actor.predict(state)
+        act_values = self.model.predict(state)[0]
         return np.argmax(act_values[0])  # returns index of action with highest probability
 
     def discount(self, r):
@@ -97,23 +98,23 @@ class DQNAgent:
 
     def train(self, states, agent_info, actions, actions_oneHot, rewards):
         discounted_rewards = self.discount(rewards)
-        state_values = self.model_critic.predict([states, agent_info, actions_oneHot])
+        state_values = self.model.predict([states, agent_info, actions])[1]
         advantages = discounted_rewards - np.reshape(state_values, len(state_values))
 
-        self.model.fit([states, agent_info, actions], [actions_oneHot, discounted_rewards], epochs=1, verbose=0)
+        weights = {'o_Policy':advantages, 'o_Value':np.ones(len(advantages))}
+        self.model.fit([states, agent_info, actions], [actions_oneHot, discounted_rewards], epochs=1, sample_weight=weights, verbose=0)
+
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
 
     def saveModel(self):
-        self.model_critic.save_weights("app_model/critic.h5")
-        self.model_actor.save_weights("app_model/actor.h5")
+        self.model.save_weights("app_model/model.h5")
         with open("app_model/epsilon.txt", "w") as txt_file:
             txt_file.write(self.epsilon)
         print("Saved model to disk")
 
     def loadModel(self):
-        self.model_critic.load_weights("app_model/critic.h5")
-        self.model_actor.load_weights("app_model/actor.h5")
+        self.model.load_weights("app_model/model.h5")
         with open("app_model/epsilon.txt", "r") as txt_file:
             self.epsilon = int(txt_file.readline())
         print("Loaded model from disk")
