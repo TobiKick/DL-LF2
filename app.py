@@ -6,6 +6,9 @@ import os, sys
 
 #Import lf2gym
 import random
+
+from keras.utils import to_categorical
+
 import lf2gym
 from time import sleep
 
@@ -29,6 +32,7 @@ sys.path.append(os.path.abspath('..'))
 
 LOAD_PROGRESS_FROM_MODEL = False
 EPISODES = 2  # SET TO 1000 to comparably calculate winning rate
+TIME_MAX = 500
 SAVE_PROGRESS_TO_MODEL = True
 HEADLESS = False
 
@@ -49,88 +53,60 @@ class DQNAgent:
         self.epsilon_min = 0.01
         self.epsilon_decay = 0.995
         self.learning_rate = 0.001
+        self.model = _build_model()
         self.model_actor = self._build_model_actor()
         self.model_critic = self._build_model_critic()
 
-    def shared_model(self, input, input_agent_info, input_action):
+    def model(self, input, input_agent_info, input_action):
+        input = Input(shape=(state_size_x, state_size_y, 4))
+
         model = Conv2D(32, kernel_size=(8,8), strides=4, padding="same", activation='relu')(input)
         model = Conv2D(64, kernel_size=(4,4), strides=2, padding="same", activation='relu')(model)
         model = Conv2D(64, kernel_size=(3,3), strides=1, padding="same", activation='relu')(model)
         model = Flatten()(model)
 
+        input_agent_info = Input(shape=(16,))
+        input_action = Input(shape=(1,))
         merge = Concatenate()([model, input_agent_info, input_action])
         reshape = Reshape((61457, 1))(merge)
         output = LSTM(64, input_shape=(61457, 1))(reshape)
-        return output
-
-    def _build_model_actor(self):
-        # Neural Net for the Actor of Actor-Critic-Model
-        # defining inputs
-        input = Input(shape=(state_size_x, state_size_y, 4))
-        input_agent_info = Input(shape=(16,))
-        input_action = Input(shape=(1,))
-
-        # calling shared model (shared weights)
-        output = self.shared_model(input, input_agent_info, input_action)
-
-        # defining residual model + output
         output = Dense(32, activation='relu')(output)
-        output = Dense(self.action_size, activation='softmax')(output)
 
-        model = Model(inputs=[input, input_agent_info, input_action], outputs=output)
-        model.compile(loss='binary_crossentropy', optimizer=Adam(lr=self.learning_rate))
+        actions_out = Dense(self.action_size, activation='softmax')(output)
+        V_out = Dense(1, activation='linear')(output)
 
-        model.summary()
-        return model
-
-    def _build_model_critic(self):
-        # Neural Net for the Critic of Actor-Critic-Model
-        # defining inputs
-        input = Input(shape=(state_size_x, state_size_y, 4))
-        input_agent_info = Input(shape=(16,))
-        input_action = Input(shape=(1,))
-
-        # calling shared model (shared weights)
-        output = self.shared_model(input, input_agent_info, input_action)
-
-        # defining residual model + output
-        output = Dense(64, activation='relu')(output)
-        output = Dense(self.action_size, activation='relu')(output)
-
-        model = Model(inputs=[input, input_agent_info, input_action], outputs=output)
-        model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
+        model = Model(inputs=[input, input_agent_info, input_action], outputs=[actions_out, V_out])
+        model.compile(loss=['mse', 'mse'], optimizer=Adam(lr=self.learning_rate))
 
         model.summary()
         return model
+
 
     def act(self, state):
         if np.random.rand() <= self.epsilon:
             return random.randrange(self.action_size)
         act_values = self.model_actor.predict(state)
-        return np.argmax(act_values[0])  # returns index of action with highges probability
+        return np.argmax(act_values[0])  # returns index of action with highest probability
 
-    # A2C training after every action taken
-    def train(self, state, action, reward, next_state, done):
-        target = reward
-        if not done:
-            target = reward + self.gamma * np.amax(self.model_critic.predict(next_state)[0])
-        target_f = self.model_critic.predict(state)  # predicting probability for each action
-        target_f[0][action] = target  # replacing the past action with target probability
-        self.model_critic.fit(state, target_f, epochs=1, verbose=0)
+    def discount(self, r):
+        discounted_r, cumul_r = np.zeros_like(r), 0
+        for t in reversed(range(0, len(r))):
+            cumul_r = r[t] + cumul_r * self.gamma
+            discounted_r[t] = cumul_r
+        return discounted_r
 
+    def train(self, states, agent_info, actions, actions_oneHot, rewards):
+        discounted_rewards = self.discount(rewards)
+        state_values = self.model_critic.predict([states, agent_info, actions_oneHot])
+        advantages = discounted_rewards - np.reshape(state_values, len(state_values))
+
+        self.model.fit([states, agent_info, actions], [actions_oneHot, discounted_rewards], epochs=1, verbose=0)
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
 
     def saveModel(self):
         self.model_critic.save_weights("app_model/critic.h5")
         self.model_actor.save_weights("app_model/actor.h5")
-        # serialize model to JSON
-        model_json_critic = self.model_critic.to_json()
-        with open("app_model/critic.json", "w") as json_file:
-            json_file.write(model_json_critic)
-        model_json_actor = self.model_actor.to_json()
-        with open("app_model/actor.json", "w") as json_file:
-            json_file.write(model_json_actor)
         with open("app_model/epsilon.txt", "w") as txt_file:
             txt_file.write(self.epsilon)
         print("Saved model to disk")
@@ -162,6 +138,7 @@ if __name__ == "__main__":
                       difficulty=lf2gym.Difficulty.Crusher,
                       action_options= ['Basic', 'AJD', 'Full Combos'],     # ['Basic', 'AJD', 'Full Combos']   # defines action space
                       headless=HEADLESS,
+                      rewardList= ['hp'],
                       versusPlayer=False) # versusPlayer= False means Agent is playing against bot instedad of user
 
     state_size_x = env.observation_space.n[0]
@@ -183,34 +160,45 @@ if __name__ == "__main__":
         # reset state in the beginning of each game
         state = env.reset()   # returns 243200 for our game as screen size input (160,380,4)
 
+        state_buffer, agent_info_buffer, action_buffer, action_oneHot_buffer, reward_buffer = [], [], [], [], []
+
         player_info = getPlayerInformation(env.get_detail())
         _state = np.reshape(state, (1, state_size_x, state_size_y, 4))
         _player_info = np.reshape(player_info, (1, 16))
         _action_last_episode = np.reshape(action_last_episode, (1, 1))
         state = [_state, _player_info, _action_last_episode]
-        for time_t in range(500):
-            # env.render()  # no need to activate render
+
+        for time_t in range(TIME_MAX):
             action = agent.act(state)
             next_state, reward, done, _ = env.step(action)
-            reward = reward if not done else -10  # punishes the agent if the game takes too long
+            if time_t == (TIME_MAX -1) & done == False:
+                reward = reward -10 # punishes the agent if the game takes too long
 
             if(env.get_detail() != None):
                 player_info = getPlayerInformation(env.get_detail())
             _next_state = np.reshape(next_state, (1, state_size_x, state_size_y, 4))
             _player_info = np.reshape(player_info, (1, 16))
             _action = np.reshape(action, (1, 1))
-            next_state = [_next_state, _player_info, _action]
+            __next_state = [_next_state, _player_info, _action]
 
-            agent.train(state, action, reward, next_state, done)  # Remember the previous state, action, reward, and done
-            state = next_state  # make next_state the new current state for the next frame.
+            state_buffer.append(np.reshape(next_state, (state_size_x, state_size_y, 4)))
+            agent_info_buffer.append(player_info)
+            action_oneHot_buffer.append(to_categorical(action, agent.action_size)) #one hot encoding the actions
+            action_buffer.append(action)
+            reward_buffer.append(reward)
+            state = __next_state  # make next_state the new current state for the next frame.
 
             if done: # # done becomes True when the game ends
                 print("episode: {}/{}, score: {}"
                       .format(e, EPISODES, time_t))
                 break
 
+        ## states = np.column_stack((state_buffer, agent_info_buffer, action_buffer))
+        ## states = np.concatenate((state_buffer, agent_info_buffer, action_buffer), axis=0)
+        agent.train(state_buffer, agent_info_buffer, action_buffer, action_oneHot_buffer, reward_buffer)
         if env.get_detail()[0].get('hp') == 0:    # [0] is player (=agent), [1] is opponent (=bot)
             wins += 1
+
         # save progress to model after finishing the last episode
         if e == (EPISODES - 1):
             winningRate = wins/(e+1)
