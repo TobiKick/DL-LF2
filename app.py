@@ -59,16 +59,18 @@ class DQNAgent:
         model = Conv2D(64, kernel_size=(4,4), strides=2, padding="same", activation='relu')(model)
         model = Conv2D(64, kernel_size=(3,3), strides=1, padding="same", activation='relu')(model)
         model = Flatten()(model)
-
+        
         input_agent_info = Input(shape=(16,))
         input_action = Input(shape=(1,))
 
         merge = Concatenate()([model, input_agent_info, input_action])
+        reshape = Reshape((61457, 1))(merge)
+        output = LSTM(64, input_shape=(61457, 1))(reshape)
 
-        output = Dense(256, activation='relu')(merge)
-        output = Dense(self.action_size, activation='sigmoid')(output)
+        output = Dense(32, activation='relu')(merge)
+        output = Dense(self.action_size, activation='linear')(output)
         model = Model(inputs=[input, input_agent_info, input_action], outputs=output)
-        model.compile(loss='binary_crossentropy', optimizer=Adam(lr=self.learning_rate))
+        model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
 
         model.summary()
         return model
@@ -160,11 +162,14 @@ if __name__ == "__main__":
         _player_info = np.reshape(player_info, (1, 16))
         _action_last_episode = np.reshape(action_last_episode, (1, 1))
         state = [_state, _player_info, _action_last_episode]
-        for time_t in range(500):
+        
+        time_max = 500
+        for time_t in range(time_max):
             # env.render()  # no need to activate render
             action = agent.act(state)
             next_state, reward, done, _ = env.step(action)
-            reward = reward if not done else -10  # punishes the agent if the game takes too long
+            if time_t == (time_max -1) & done == False:
+                reward = -10
 
             if(env.get_detail() != None):
                 player_info = getPlayerInformation(env.get_detail())
