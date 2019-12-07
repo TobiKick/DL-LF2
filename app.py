@@ -28,9 +28,9 @@ sys.path.append(os.path.abspath('..'))
 
 
 LOAD_PROGRESS_FROM_MODEL = False
-EPISODES = 50
+EPISODES = 2
 SAVE_PROGRESS_TO_MODEL = True
-HEADLESS = False
+HEADLESS = True
 
 ############################# SETUP THE DEEP Q AGENT ########################################################
 # Deep Q-learning Agent
@@ -183,8 +183,9 @@ if __name__ == "__main__":
                 action_last_episode = action
                 agent.replay(batch_size)
 
-        if env.get_detail()[0].get('hp') == 0:    # [0] is player (=agent), [1] is opponent (=bot)
-            wins += 1
+        if env.get_detail() != None:
+		if env.get_detail()[0].get('hp') == 0:
+        		wins += 1
         # save progress to model after finishing the last episode
         if e == (EPISODES - 1):
             winningRate = wins/(e+1)
