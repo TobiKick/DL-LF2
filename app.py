@@ -184,8 +184,8 @@ if __name__ == "__main__":
                 agent.replay(batch_size)
 
         if env.get_detail() != None:
-		if env.get_detail()[0].get('hp') == 0:
-        		wins += 1
+            if env.get_detail()[0].get('hp') == 0:
+                wins += 1
         # save progress to model after finishing the last episode
         if e == (EPISODES - 1):
             winningRate = wins/(e+1)
