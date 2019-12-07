@@ -92,7 +92,7 @@ class DQNAgent:
         for state, action, reward, next_state, done in minibatch:
             target = reward
             if not done:
-                target = reward + self.gamma * np.amax(self.model.predict(next_state)[0])
+                target = reward + self.gamma * np.amax(self.model.predict(next_state)[0]) # target = discounted reward
                 # Bellmann equation:    expected long-term reward for a given action is equal to the immediate reward from the current 
                 # action combined with the expected reward from the best future action taken at the following state.
             target_f = self.model.predict(state)  # predicting probability for each action
