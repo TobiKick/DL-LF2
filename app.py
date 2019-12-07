@@ -28,13 +28,9 @@ sys.path.append(os.path.abspath('..'))
 
 
 LOAD_PROGRESS_FROM_MODEL = False
-EPISODES = 2  # SET TO 1000 to comparably calculate winning rate
+EPISODES = 50
 SAVE_PROGRESS_TO_MODEL = True
 HEADLESS = False
-
-########################### FORCE KERAS TO USE CPU #####################################################
-# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-# os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 ############################# SETUP THE DEEP Q AGENT ########################################################
 # Deep Q-learning Agent
@@ -104,10 +100,6 @@ class DQNAgent:
 
     def saveModel(self):
         self.model.save_weights("app_model/model.h5")
-        # serialize model to JSON
-        model_json = self.model.to_json()
-        with open("app_model/model.json", "w") as json_file:
-            json_file.write(model_json)
         with open("app_model/epsilon.txt", "w") as txt_file:
             txt_file.write(self.epsilon)
         print("Saved model to disk")
