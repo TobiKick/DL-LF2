@@ -107,16 +107,17 @@ class DQNAgent:
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
 
-    def saveModel(self):
+    def saveModel(self, wins, e):
         self.model.save_weights("app_model/model.h5")
-        with open("app_model/epsilon.txt", "w") as txt_file:
-            txt_file.write(self.epsilon)
+        with open("app_model/stats.txt", "w", newline="\n", encoding="utf-8") as txt_file:
+            txt_file.writelines([str(self.epsilon), "\n" + str(wins), "\n" + str(e)])
         print("Saved model to disk")
 
     def loadModel(self):
         self.model.load_weights("app_model/model.h5")
-        with open("app_model/epsilon.txt", "r") as txt_file:
-            self.epsilon = int(txt_file.readline())
+        with open("app_model/stats.txt", "r") as txt_file:
+            self.epsilon = float(txt_file.readline())
+        print(self.epsilon)
         print("Loaded model from disk")
 
 ############################# DEEP Q LEARNING ########################################################
@@ -205,4 +206,4 @@ if __name__ == "__main__":
             winningRate = wins/(e+1)
             print("# Wins: " + str(wins) + ", # Episodes: " + str(e+1) + ", Winning Rate: " + str(winningRate))
             print("# Current epsilon: " + str(agent.epsilon))
-            agent.saveModel()
+            agent.saveModel(wins, e+1)
