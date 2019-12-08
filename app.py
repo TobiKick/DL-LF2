@@ -101,7 +101,7 @@ class DQNAgent:
     def saveModel(self):
         self.model.save_weights("app_model/model.h5")
         with open("app_model/epsilon.txt", "w") as txt_file:
-            txt_file.write(self.epsilon)
+            txt_file.write(str(self.epsilon))
         print("Saved model to disk")
 
     def loadModel(self):
