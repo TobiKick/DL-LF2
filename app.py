@@ -28,10 +28,11 @@ args = parser.parse_args()
 sys.path.append(os.path.abspath('..'))
 
 
-LOAD_PROGRESS_FROM_MODEL = True
 EPISODES = 45
+LOAD_PROGRESS_FROM_MODEL = False
 SAVE_PROGRESS_TO_MODEL = True
 HEADLESS = True
+TRAINING = True
 
 ############################# SETUP THE DEEP Q AGENT ########################################################
 # Deep Q-learning Agent
@@ -45,8 +46,9 @@ class DQNAgent:
         self.gamma = 0.95    # discount rate
         self.epsilon = 1.0  # exploration rate
         self.epsilon_min = 0.01
-        self.epsilon_decay = 0.995
+        self.epsilon_decay = 0.99995
         self.learning_rate = 0.001
+        self.totalEpisodes = 0
         self.model = self._build_model()
 
     def _build_model(self):
@@ -102,14 +104,16 @@ class DQNAgent:
     def saveModel(self, wins, e):
         self.model.save_weights("app_model/model.h5")
         with open("app_model/stats.txt", "w", newline="\n", encoding="utf-8") as txt_file:
-            txt_file.writelines([str(self.epsilon), "\n" + str(wins), "\n" + str(e)])
+            txt_file.writelines([str(self.epsilon), "\n" + str(self.totalEpisodes) + "\n" + str(wins), "\n" + str(e)])
         print("Saved model to disk")
 
     def loadModel(self):
         self.model.load_weights("app_model/model.h5")
         with open("app_model/stats.txt", "r") as txt_file:
             self.epsilon = float(txt_file.readline())
-        print(self.epsilon)
+            self.totalEpisodes = int(txt_file.readline())
+        print("epsilon: " + str(self.epsilon))
+        print("totalEpisodes: " + str(self.totalEpisodes))
         print("Loaded model from disk")
 
 ############################# DEEP Q LEARNING ########################################################
@@ -183,13 +187,18 @@ if __name__ == "__main__":
             # train the agent with the experience of the episode
             if len(agent.memory) > batch_size:
                 action_last_episode = action
-                agent.replay(batch_size)
+                if TRAINING == True:
+                    agent.replay(batch_size)
 
+        print("Episode: " + str(e+1))
         if env.get_detail() != None:
             if env.get_detail()[0].get('hp') == 0:
                 wins += 1
+                print("The RL agent won")
+
         # save progress to model after finishing the last episode
         if e == (EPISODES - 1):
+            agent.totalEpisodes += (e+1)
             winningRate = wins/(e+1)
             print("# Wins: " + str(wins) + ", # Episodes: " + str(e+1) + ", Winning Rate: " + str(winningRate))
             print("# Current epsilon: " + str(agent.epsilon))
