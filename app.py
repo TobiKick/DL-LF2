@@ -31,9 +31,9 @@ args = parser.parse_args()
 sys.path.append(os.path.abspath('..'))
 
 
-EPISODES = 5
+EPISODES = 15
 TIME_MAX = 500  # with 500 it exceeded system memory
-LOAD_PROGRESS_FROM_MODEL = False
+LOAD_PROGRESS_FROM_MODEL = True
 SAVE_PROGRESS_TO_MODEL = True
 HEADLESS = True
 TRAINING = True
@@ -49,7 +49,7 @@ class DQNAgent:
         self.gamma = 0.95    # discount rate
         self.epsilon = 1.0  # exploration rate
         self.epsilon_min = 0.01
-        self.epsilon_decay = 0.995
+        self.epsilon_decay = 0.97
         self.learning_rate = 0.001
         self.totalEpisodes = 0
         self.model = self._build_model()
