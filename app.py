@@ -30,11 +30,12 @@ args = parser.parse_args()
 sys.path.append(os.path.abspath('..'))
 
 
+EPISODES = 2
+TIME_MAX = 400  # with 500 it exceeded system memory
 LOAD_PROGRESS_FROM_MODEL = False
-EPISODES = 2  # SET TO 1000 to comparably calculate winning rate
-TIME_MAX = 500
 SAVE_PROGRESS_TO_MODEL = True
-HEADLESS = False
+HEADLESS = True
+TRAINING = True
 
 ########################### FORCE KERAS TO USE CPU #####################################################
 # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -53,6 +54,7 @@ class DQNAgent:
         self.epsilon_min = 0.01
         self.epsilon_decay = 0.995
         self.learning_rate = 0.001
+        self.totalEpisodes = 0
         self.model = self._build_model()
 
     def logloss(self, y_true, y_pred):     #policy loss
@@ -110,14 +112,16 @@ class DQNAgent:
     def saveModel(self, wins, e):
         self.model.save_weights("app_model/model.h5")
         with open("app_model/stats.txt", "w", newline="\n", encoding="utf-8") as txt_file:
-            txt_file.writelines([str(self.epsilon), "\n" + str(wins), "\n" + str(e)])
+            txt_file.writelines([str(self.epsilon), "\n" + str(self.totalEpisodes) + "\n" + str(wins), "\n" + str(e)])
         print("Saved model to disk")
 
     def loadModel(self):
         self.model.load_weights("app_model/model.h5")
         with open("app_model/stats.txt", "r") as txt_file:
             self.epsilon = float(txt_file.readline())
-        print(self.epsilon)
+            self.totalEpisodes = int(txt_file.readline())
+        print("Epsilon: " + str(self.epsilon))
+        print("TotalEpisodes: " + str(self.totalEpisodes))
         print("Loaded model from disk")
 
 ############################# DEEP Q LEARNING ########################################################
@@ -195,14 +199,17 @@ if __name__ == "__main__":
                       .format(e, EPISODES, time_t))
                 break
 
-        ## states = np.column_stack((state_buffer, agent_info_buffer, action_buffer))
-        ## states = np.concatenate((state_buffer, agent_info_buffer, action_buffer), axis=0)
-        agent.train(state_buffer, agent_info_buffer, action_buffer, action_oneHot_buffer, reward_buffer)
+        if TRAINING == True:
+            agent.train(state_buffer, agent_info_buffer, action_buffer, action_oneHot_buffer, reward_buffer)
+
+        print("Epsiode: " + str(e+1))
         if env.get_detail()[0].get('hp') == 0:    # [0] is player (=agent), [1] is opponent (=bot)
             wins += 1
+            print("Agent won!")
 
         # save progress to model after finishing the last episode
         if e == (EPISODES - 1):
+            agent.totalEpisodes += (e+1)
             winningRate = wins/(e+1)
             print("# Wins: " + str(wins) + ", # Episodes: " + str(e+1) + ", Winning Rate: " + str(winningRate))
             print("# Current epsilon: " + str(agent.epsilon))
