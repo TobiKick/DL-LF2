@@ -30,16 +30,12 @@ args = parser.parse_args()
 sys.path.append(os.path.abspath('..'))
 
 
-EPISODES = 2
-TIME_MAX = 400  # with 500 it exceeded system memory
+EPISODES = 5
+TIME_MAX = 500  # with 500 it exceeded system memory
 LOAD_PROGRESS_FROM_MODEL = False
 SAVE_PROGRESS_TO_MODEL = True
-HEADLESS = True
+HEADLESS = False
 TRAINING = True
-
-########################### FORCE KERAS TO USE CPU #####################################################
-# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-# os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 ############################# SETUP THE DEEP Q AGENT ########################################################
 # Deep Q-learning Agent
@@ -71,12 +67,12 @@ class DQNAgent:
         input_agent_info = Input(shape=(16,))
         input_action = Input(shape=(1,))
         merge = Concatenate()([model, input_agent_info, input_action])
-        reshape = Reshape((61457, 1))(merge)
-        output = LSTM(64, input_shape=(61457, 1))(reshape)
-        output = Dense(32, activation='relu')(output)
+        #reshape = Reshape((61457, 1))(merge)
+        #output = LSTM(64, input_shape=(61457, 1))(reshape)
 
-        actions_out = Dense(self.action_size,  name = 'o_Policy', activation='softmax')(output)
-        value_out = Dense(1,  name = 'o_Value', activation='linear')(output)
+        #output = Dense(32, activation='relu')(output)
+        actions_out = Dense(self.action_size,  name = 'o_Policy', activation='softmax')(merge)
+        value_out = Dense(1,  name = 'o_Value', activation='linear')(merge)
 
         model = Model(inputs=[input, input_agent_info, input_action], outputs=[actions_out, value_out])
         model.compile(loss = {'o_Policy': self.logloss, 'o_Value': 'mse'},  loss_weights = {'o_Policy': 1., 'o_Value' : 0.5}, optimizer=Adam(lr=self.learning_rate))
@@ -98,13 +94,14 @@ class DQNAgent:
             discounted_r[t] = cumul_r
         return discounted_r
 
+    # not yet using oneHot encoded actions ( -> because of implications on the act() function
     def train(self, states, agent_info, actions, actions_oneHot, rewards):
         discounted_rewards = self.discount(rewards)
-        state_values = self.model.predict([states, agent_info, actions])[1]
-        advantages = discounted_rewards - np.reshape(state_values, len(state_values))
-
-        weights = {'o_Policy':advantages, 'o_Value':np.ones(len(advantages))}
-        self.model.fit([states, agent_info, actions], [actions_oneHot, discounted_rewards], epochs=1, sample_weight=weights, verbose=0)
+        state_values = self.model.predict([states, agent_info, actions])
+        state_values = state_values[1]
+        advantages = discounted_rewards - np.reshape(state_values[0], len(state_values[0]))
+        weights = {'o_Policy': advantages, 'o_Value': np.ones(len(advantages))}
+        self.model.fit([states, agent_info, actions], [actions, discounted_rewards], epochs=1, sample_weight=weights, verbose=0)
 
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
