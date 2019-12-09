@@ -7,17 +7,18 @@ import os, sys
 #Import lf2gym
 import random
 
-from keras.utils import to_categorical
+
 
 import lf2gym
-from time import sleep
 
 #Import Keras modules
 from keras.layers import Dense, Flatten, Input, Conv2D, LSTM, concatenate, Concatenate, Reshape
+from keras.layers.cudnn_recurrent import CuDNNLSTM
 from keras import Model, Sequential
 import numpy as np
 from keras.optimizers import Adam
 import keras.backend as K
+from keras.utils import to_categorical
 
 ############################# SETUP LF2 PARAMETERS ########################################################
 parser = argparse.ArgumentParser()
@@ -34,7 +35,7 @@ EPISODES = 5
 TIME_MAX = 500  # with 500 it exceeded system memory
 LOAD_PROGRESS_FROM_MODEL = False
 SAVE_PROGRESS_TO_MODEL = True
-HEADLESS = False
+HEADLESS = True
 TRAINING = True
 
 ############################# SETUP THE DEEP Q AGENT ########################################################
@@ -59,16 +60,16 @@ class DQNAgent:
     def _build_model(self):
         input = Input(shape=(state_size_x, state_size_y, 4))
 
-        model = Conv2D(32, kernel_size=(8,8), strides=4, padding="same", activation='relu')(input)
-        model = Conv2D(64, kernel_size=(4,4), strides=2, padding="same", activation='relu')(model)
-        model = Conv2D(64, kernel_size=(3,3), strides=1, padding="same", activation='relu')(model)
+        model = Conv2D(32, kernel_size=(8,8), strides=4, activation='relu')(input)
+        model = Conv2D(64, kernel_size=(4,4), strides=2, activation='relu')(model)
+        model = Conv2D(64, kernel_size=(3,3), strides=1, activation='relu')(model)
         model = Flatten()(model)
 
         input_agent_info = Input(shape=(16,))
         input_action = Input(shape=(1,))
         merge = Concatenate()([model, input_agent_info, input_action])
-        reshape = Reshape((61457, 1))(merge)
-        output = LSTM(64, input_shape=(61457, 1))(reshape)
+        reshape = Reshape((45073, 1))(merge)
+        output = CuDNNLSTM(512, input_shape=(45073, 1))(reshape)
 
         #output = Dense(32, activation='relu')(output)
         actions_out = Dense(self.action_size,  name = 'o_Policy', activation='softmax')(output)
