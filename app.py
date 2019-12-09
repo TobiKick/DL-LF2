@@ -67,12 +67,12 @@ class DQNAgent:
         input_agent_info = Input(shape=(16,))
         input_action = Input(shape=(1,))
         merge = Concatenate()([model, input_agent_info, input_action])
-        #reshape = Reshape((61457, 1))(merge)
-        #output = LSTM(64, input_shape=(61457, 1))(reshape)
+        reshape = Reshape((61457, 1))(merge)
+        output = LSTM(64, input_shape=(61457, 1))(reshape)
 
         #output = Dense(32, activation='relu')(output)
-        actions_out = Dense(self.action_size,  name = 'o_Policy', activation='softmax')(merge)
-        value_out = Dense(1,  name = 'o_Value', activation='linear')(merge)
+        actions_out = Dense(self.action_size,  name = 'o_Policy', activation='softmax')(output)
+        value_out = Dense(1,  name = 'o_Value', activation='linear')(output)
 
         model = Model(inputs=[input, input_agent_info, input_action], outputs=[actions_out, value_out])
         model.compile(loss = {'o_Policy': self.logloss, 'o_Value': 'mse'},  loss_weights = {'o_Policy': 1., 'o_Value' : 0.5}, optimizer=Adam(lr=self.learning_rate))
@@ -174,8 +174,7 @@ if __name__ == "__main__":
         for time_t in range(TIME_MAX):
             action = agent.act(state)
             next_state, reward, done, _ = env.step(action)
-            if time_t == (TIME_MAX -1) & done == False:
-                reward = reward -10 # punishes the agent if the game takes too long
+            reward = reward if not done else -10
 
             if(env.get_detail() != None):
                 player_info = getPlayerInformation(env.get_detail())
