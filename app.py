@@ -28,8 +28,8 @@ args = parser.parse_args()
 sys.path.append(os.path.abspath('..'))
 
 
-LOAD_PROGRESS_FROM_MODEL = False
-EPISODES = 2
+LOAD_PROGRESS_FROM_MODEL = True
+EPISODES = 45
 SAVE_PROGRESS_TO_MODEL = True
 HEADLESS = True
 
