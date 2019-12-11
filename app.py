@@ -28,7 +28,7 @@ args = parser.parse_args()
 sys.path.append(os.path.abspath('..'))
 
 
-EPISODES = 45
+EPISODES = 50
 LOAD_PROGRESS_FROM_MODEL = False
 SAVE_PROGRESS_TO_MODEL = True
 HEADLESS = True
@@ -102,14 +102,14 @@ class DQNAgent:
             self.epsilon *= self.epsilon_decay
 
     def saveModel(self, wins, e):
-        self.model.save_weights("app_model/model.h5")
-        with open("app_model/stats.txt", "w", newline="\n", encoding="utf-8") as txt_file:
+        self.model.save_weights("app_model/model_50.h5")
+        with open("app_model/stats_50.txt", "w", newline="\n", encoding="utf-8") as txt_file:
             txt_file.writelines([str(self.epsilon), "\n" + str(self.totalEpisodes) + "\n" + str(wins), "\n" + str(e)])
         print("Saved model to disk")
 
     def loadModel(self):
-        self.model.load_weights("app_model/model.h5")
-        with open("app_model/stats.txt", "r") as txt_file:
+        self.model.load_weights("app_model/model_50.h5")
+        with open("app_model/stats_50.txt", "r") as txt_file:
             self.epsilon = float(txt_file.readline())
             self.totalEpisodes = int(txt_file.readline())
         print("epsilon: " + str(self.epsilon))
@@ -168,7 +168,9 @@ if __name__ == "__main__":
             # env.render()  # no need to activate render
             action = agent.act(state)
             next_state, reward, done, _ = env.step(action)
-            if time_t == (time_max -1) & done == False:
+            if done == True & env.get_detail()[0].get('hp') == 0:
+                reward = -10
+            if time_t == (time_max -1):
                 reward = -10
 
             if(env.get_detail() != None):
@@ -182,7 +184,7 @@ if __name__ == "__main__":
 
             if done: # # done becomes True when the game ends
                 print("episode: {}/{}, score: {}"
-                      .format(e, EPISODES, time_t))
+                      .format(e+1, EPISODES, time_t))
                 break
             # train the agent with the experience of the episode
             if len(agent.memory) > batch_size:
