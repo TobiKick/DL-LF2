@@ -185,8 +185,8 @@ if __name__ == "__main__":
 
             if(env.get_detail() != None):
                 player_info = getPlayerInformation(env.get_detail())
-                if done == True & env.get_detail()[0].get('hp') == 0:
-                    reward = -10
+		if done == False and env.get_detail()[0].get('hp') == 0:
+			reward = -10
             print("Reward: " + str(reward))
             _next_state = np.reshape(next_state, (1, state_size_x, state_size_y, 4))
             _player_info = np.reshape(player_info, (1, 16))
