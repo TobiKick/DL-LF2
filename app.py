@@ -31,7 +31,7 @@ args = parser.parse_args()
 sys.path.append(os.path.abspath('..'))
 
 
-EPISODES = 7
+EPISODES = 20
 TIME_MAX = 500  # with 500 it exceeded system memory
 LOAD_PROGRESS_FROM_MODEL = True
 SAVE_PROGRESS_TO_MODEL = True
