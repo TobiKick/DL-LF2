@@ -11,7 +11,7 @@ import lf2gym
 from time import sleep
 
 #Import Keras modules
-from keras.layers import Dense, Flatten, Input, Conv2D, LSTM, concatenate, Concatenate, Reshape
+from keras.layers import Dense, Flatten, Input, Conv2D, LSTM, concatenate, Concatenate, Reshape, MaxPool2D
 from keras import Model, Sequential
 import numpy as np
 from keras.optimizers import Adam
@@ -52,21 +52,22 @@ class DQNAgent:
         self.model = self._build_model()
 
     def _build_model(self):
-        # Neural Net for Deep-Q learning Model
         input = Input(shape=(state_size_x, state_size_y, 4))
-        model = Conv2D(32, kernel_size=(8,8), strides=4, padding="same", activation='relu')(input)
-        model = Conv2D(64, kernel_size=(4,4), strides=2, padding="same", activation='relu')(model)
-        model = Conv2D(64, kernel_size=(3,3), strides=1, padding="same", activation='relu')(model)
+
+        model = Conv2D(32, kernel_size=(8,8), strides=4, activation='relu')(input)
+        model = MaxPool2D((2,2), padding='same')(model)
+        model = Conv2D(64, kernel_size=(4,4), strides=2, activation='relu')(model)
+        model = MaxPool2D((2,2), padding='same')(model)
+        model = Conv2D(64, kernel_size=(3,3), strides=1, activation='relu')(model)
+        model = MaxPool2D((2,2), padding='same')(model)
         model = Flatten()(model)
-        
+
         input_agent_info = Input(shape=(16,))
         input_action = Input(shape=(1,))
-
         merge = Concatenate()([model, input_agent_info, input_action])
-        reshape = Reshape((61457, 1))(merge)
-        output = LSTM(64, input_shape=(61457, 1))(reshape)
+        reshape = Reshape((657, 1))(merge)
+        output = LSTM(64, input_shape=(657, 1))(reshape)
 
-        output = Dense(32, activation='relu')(merge)
         output = Dense(self.action_size, activation='linear')(output)
         model = Model(inputs=[input, input_agent_info, input_action], outputs=output)
         model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
