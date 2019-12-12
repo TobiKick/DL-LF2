@@ -32,7 +32,7 @@ sys.path.append(os.path.abspath('..'))
 
 
 EPISODES = 50
-TIME_MAX = 500  # with 500 it exceeded system memory
+TIME_MAX = 509
 LOAD_PROGRESS_FROM_MODEL = False
 SAVE_PROGRESS_TO_MODEL = True
 HEADLESS = True
@@ -186,7 +186,6 @@ if __name__ == "__main__":
                 player_info = getPlayerInformation(env.get_detail())
                 if done == False and env.get_detail()[0].get('hp') == 0:
                     reward = -10
-            print("Reward: " + str(reward))
             _next_state = np.reshape(next_state, (1, state_size_x, state_size_y, 4))
             _player_info = np.reshape(player_info, (1, 16))
             _action = np.reshape(action, (1, 1))
