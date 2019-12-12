@@ -6,15 +6,11 @@ import os, sys
 
 #Import lf2gym
 import random
-
-
-
 import lf2gym
 
 #Import Keras modules
-from keras.layers import Dense, Flatten, Input, Conv2D, LSTM, concatenate, Concatenate, Reshape, ConvLSTM2D, MaxPool2D
-from keras.layers.cudnn_recurrent import CuDNNLSTM
-from keras import Model, Sequential
+from keras.layers import Dense, Flatten, Input, Conv2D, LSTM, Concatenate, Reshape, MaxPool2D
+from keras import Model
 import numpy as np
 from keras.optimizers import Adam
 import keras.backend as K
@@ -32,8 +28,8 @@ sys.path.append(os.path.abspath('..'))
 
 
 EPISODES = 50
-TIME_MAX = 509
-LOAD_PROGRESS_FROM_MODEL = False
+TIME_MAX = 500
+LOAD_PROGRESS_FROM_MODEL = True
 SAVE_PROGRESS_TO_MODEL = True
 HEADLESS = True
 TRAINING = True
@@ -49,7 +45,7 @@ class DQNAgent:
         self.gamma = 0.95    # discount rate
         self.epsilon = 1.0  # exploration rate
         self.epsilon_min = 0.01
-        self.epsilon_decay = 0.97
+        self.epsilon_decay = 0.99
         self.learning_rate = 0.001
         self.totalEpisodes = 0
         self.model = self._build_model()
@@ -112,14 +108,14 @@ class DQNAgent:
             self.epsilon *= self.epsilon_decay
 
     def saveModel(self, wins, e):
-        self.model.save_weights("app_model/model_100.h5")
-        with open("app_model/stats_100.txt", "w", newline="\n", encoding="utf-8") as txt_file:
+        self.model.save_weights("app_model/model_50.h5")
+        with open("app_model/stats_50.txt", "w", newline="\n", encoding="utf-8") as txt_file:
             txt_file.writelines([str(self.epsilon), "\n" + str(self.totalEpisodes) + "\n" + str(wins), "\n" + str(e)])
         print("Saved model to disk")
 
     def loadModel(self):
-        self.model.load_weights("app_model/model_100.h5")
-        with open("app_model/stats_100.txt", "r") as txt_file:
+        self.model.load_weights("app_model/model_50.h5")
+        with open("app_model/stats_50.txt", "r") as txt_file:
             self.epsilon = float(txt_file.readline())
             self.totalEpisodes = int(txt_file.readline())
         print("Epsilon: " + str(self.epsilon))
