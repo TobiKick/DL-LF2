@@ -28,7 +28,7 @@ sys.path.append(os.path.abspath('..'))
 
 
 EPISODES = 50
-TIME_MAX = 500
+TIME_MAX = 750
 LOAD_PROGRESS_FROM_MODEL = True
 SAVE_PROGRESS_TO_MODEL = True
 HEADLESS = True
@@ -108,14 +108,14 @@ class DQNAgent:
             self.epsilon *= self.epsilon_decay
 
     def saveModel(self, wins, e):
-        self.model.save_weights("app_model/model.h5")
-        with open("app_model/stats.txt", "w", newline="\n", encoding="utf-8") as txt_file:
+        self.model.save_weights("app_model/model_50.h5")
+        with open("app_model/stats_50.txt", "w", newline="\n", encoding="utf-8") as txt_file:
             txt_file.writelines([str(self.epsilon), "\n" + str(self.totalEpisodes) + "\n" + str(wins), "\n" + str(e)])
         print("Saved model to disk")
 
     def loadModel(self):
-        self.model.load_weights("app_model/model.h5")
-        with open("app_model/stats.txt", "r") as txt_file:
+        self.model.load_weights("app_model/model_50.h5")
+        with open("app_model/stats_50.txt", "r") as txt_file:
             self.epsilon = float(txt_file.readline())
             self.totalEpisodes = int(txt_file.readline())
         print("Epsilon: " + str(self.epsilon))
