@@ -29,9 +29,10 @@ sys.path.append(os.path.abspath('..'))
 
 
 EPISODES = 50
+TIME_MAX = 750
 LOAD_PROGRESS_FROM_MODEL = False
 SAVE_PROGRESS_TO_MODEL = True
-HEADLESS = True
+HEADLESS = False
 TRAINING = True
 
 ############################# SETUP THE DEEP Q AGENT ########################################################
@@ -46,7 +47,7 @@ class DQNAgent:
         self.gamma = 0.95    # discount rate
         self.epsilon = 1.0  # exploration rate
         self.epsilon_min = 0.01
-        self.epsilon_decay = 0.99995
+        self.epsilon_decay = 0.99
         self.learning_rate = 0.001
         self.totalEpisodes = 0
         self.model = self._build_model()
@@ -103,18 +104,18 @@ class DQNAgent:
             self.epsilon *= self.epsilon_decay
 
     def saveModel(self, wins, e):
-        self.model.save_weights("app_model/model_50.h5")
-        with open("app_model/stats_50.txt", "w", newline="\n", encoding="utf-8") as txt_file:
+        self.model.save_weights("app_model/model.h5")
+        with open("app_model/stats.txt", "w", newline="\n", encoding="utf-8") as txt_file:
             txt_file.writelines([str(self.epsilon), "\n" + str(self.totalEpisodes) + "\n" + str(wins), "\n" + str(e)])
         print("Saved model to disk")
 
     def loadModel(self):
-        self.model.load_weights("app_model/model_50.h5")
-        with open("app_model/stats_50.txt", "r") as txt_file:
+        self.model.load_weights("app_model/model.h5")
+        with open("app_model/stats.txt", "r") as txt_file:
             self.epsilon = float(txt_file.readline())
             self.totalEpisodes = int(txt_file.readline())
-        print("epsilon: " + str(self.epsilon))
-        print("totalEpisodes: " + str(self.totalEpisodes))
+        print("Epsilon: " + str(self.epsilon))
+        print("TotalEpisodes: " + str(self.totalEpisodes))
         print("Loaded model from disk")
 
 ############################# DEEP Q LEARNING ########################################################
@@ -163,19 +164,19 @@ if __name__ == "__main__":
         _player_info = np.reshape(player_info, (1, 16))
         _action_last_episode = np.reshape(action_last_episode, (1, 1))
         state = [_state, _player_info, _action_last_episode]
-        
-        time_max = 500
-        for time_t in range(time_max):
+
+        for time_t in range(TIME_MAX):
             # env.render()  # no need to activate render
             action = agent.act(state)
             next_state, reward, done, _ = env.step(action)
-            if done == True & env.get_detail()[0].get('hp') == 0:
-                reward = -10
-            if time_t == (time_max -1):
-                reward = -10
 
+            if time_t == (TIME_MAX -1):
+                reward = -10
             if(env.get_detail() != None):
                 player_info = getPlayerInformation(env.get_detail())
+                if done == False and env.get_detail()[0].get('hp') == 0:
+                    reward = -10
+
             _next_state = np.reshape(next_state, (1, state_size_x, state_size_y, 4))
             _player_info = np.reshape(player_info, (1, 16))
             _action = np.reshape(action, (1, 1))
@@ -187,11 +188,13 @@ if __name__ == "__main__":
                 print("episode: {}/{}, score: {}"
                       .format(e+1, EPISODES, time_t))
                 break
-            # train the agent with the experience of the episode
-            if len(agent.memory) > batch_size:
+
+            if time_t == (TIME_MAX-1):
                 action_last_episode = action
-                if TRAINING == True:
-                    agent.replay(batch_size)
+
+        # train the agent with the experience of the episode
+        if len(agent.memory) > batch_size and TRAINING == True:
+            agent.replay(batch_size)
 
         print("Episode: " + str(e+1))
         if env.get_detail() != None:
