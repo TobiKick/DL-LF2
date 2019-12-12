@@ -199,6 +199,9 @@ if __name__ == "__main__":
                       .format(e+1, EPISODES, time_t))
                 break
 
+            if time_t == (TIME_MAX-1):
+                action_last_episode = action
+
         if TRAINING == True:
             agent.train(state_buffer, agent_info_buffer, action_buffer, action_oneHot_buffer, reward_buffer)
 
