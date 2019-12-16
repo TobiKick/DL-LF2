@@ -187,6 +187,13 @@ if __name__ == "__main__":
             if done: # # done becomes True when the game ends
                 print("episode: {}/{}, score: {}"
                       .format(e+1, EPISODES, time_t))
+                if player_info[0] >= player_info[8]: # [0] is hp from player (=agent), [8] hp from is opponent (=bot)
+                    wins += 1
+                    print("Agent won!")
+                    print("Agent HP: " + str(player_info[0]))
+                else:
+                    print("Computer won!")
+                    print("Agent HP: " + str(player_info[0]))
                 break
 
             if time_t == (TIME_MAX-1):
@@ -197,10 +204,6 @@ if __name__ == "__main__":
             agent.replay(batch_size)
 
         print("Episode: " + str(e+1))
-        if env.get_detail() != None:
-            if env.get_detail()[0].get('hp') == 0:
-                wins += 1
-                print("The RL agent won")
 
         # save progress to model after finishing the last episode
         if e == (EPISODES - 1):
