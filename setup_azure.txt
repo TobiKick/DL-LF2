@@ -1,0 +1,12 @@
+# 1. install azure-CLI
+
+# 2. in case there is a key problem ... import the missing keys
+	sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys PUT_THE_MISSING_KEY_HERE
+
+# 3. authentication
+	az login
+
+# 4. Shell script for running the app.py file and shut down the VM
+
+	#!/bin/bash
+	screen -dm bash -c "python3 /home/tk93/Projects/DL_LF2/app.py && sleep 60s && az vm deallocate --resource-group DeepLearning --name NvidiaTF"
