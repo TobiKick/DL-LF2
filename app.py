@@ -30,9 +30,9 @@ sys.path.append(os.path.abspath('..'))
 EPISODES = 53
 TIME_MAX = 750
 LOAD_PROGRESS_FROM_MODEL = True
-SAVE_PROGRESS_TO_MODEL = True
-HEADLESS = True
-TRAINING = True
+SAVE_PROGRESS_TO_MODEL = False
+HEADLESS = False
+TRAINING = False
 
 ############################# SETUP THE DEEP Q AGENT ########################################################
 # Deep Q-learning Agent
@@ -197,6 +197,13 @@ if __name__ == "__main__":
             if done: # # done becomes True when the game ends
                 print("episode: {}/{}, score: {}"
                       .format(e+1, EPISODES, time_t))
+                if player_info[0] >= player_info[8]: # [0] is hp from player (=agent), [8] hp from is opponent (=bot)
+                    wins += 1
+                    print("Agent won!")
+                    print("Agent HP: " + str(player_info[0]))
+                else:
+                    print("Computer won!")
+                    print("Agent HP: " + str(player_info[0]))
                 break
 
             if time_t == (TIME_MAX-1):
@@ -206,11 +213,6 @@ if __name__ == "__main__":
             agent.train(state_buffer, agent_info_buffer, action_buffer, action_oneHot_buffer, reward_buffer)
 
         print("Epsiode: " + str(e+1))
-        if env.get_detail() != None:
-            if env.get_detail()[0].get('hp') == 0:    # [0] is player (=agent), [1] is opponent (=bot)
-                wins += 1
-                print("Agent won!")
-
         # save progress to model after finishing the last episode
         if e == (EPISODES - 1):
             agent.totalEpisodes += (e+1)
