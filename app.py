@@ -28,11 +28,11 @@ args = parser.parse_args()
 sys.path.append(os.path.abspath('..'))
 
 
-EPISODES = 50
+EPISODES = 99
 TIME_MAX = 750
-LOAD_PROGRESS_FROM_MODEL = False
+LOAD_PROGRESS_FROM_MODEL = True
 SAVE_PROGRESS_TO_MODEL = True
-HEADLESS = False
+HEADLESS = True
 TRAINING = True
 
 ############################# SETUP THE DEEP Q AGENT ########################################################
