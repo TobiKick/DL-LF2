@@ -28,7 +28,7 @@ args = parser.parse_args()
 sys.path.append(os.path.abspath('..'))
 
 
-EPISODES = 99
+EPISODES = 100
 TIME_MAX = 750
 LOAD_PROGRESS_FROM_MODEL = True
 SAVE_PROGRESS_TO_MODEL = True
