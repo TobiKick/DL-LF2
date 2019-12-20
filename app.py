@@ -104,14 +104,14 @@ class DQNAgent:
             self.epsilon *= self.epsilon_decay
 
     def saveModel(self, wins, e):
-        self.model.save_weights("app_model/model_400.h5")
-        with open("app_model/stats_400.txt", "w", newline="\n", encoding="utf-8") as txt_file:
+        self.model.save_weights("app_model/model.h5")
+        with open("app_model/stats.txt", "w", newline="\n", encoding="utf-8") as txt_file:
             txt_file.writelines([str(self.epsilon), "\n" + str(self.totalEpisodes) + "\n" + str(wins), "\n" + str(e)])
         print("Saved model to disk")
 
     def loadModel(self):
-        self.model.load_weights("app_model/model_400.h5")
-        with open("app_model/stats_400.txt", "r") as txt_file:
+        self.model.load_weights("app_model/model.h5")
+        with open("app_model/stats.txt", "r") as txt_file:
             self.epsilon = float(txt_file.readline())
             self.totalEpisodes = int(txt_file.readline())
         print("Epsilon: " + str(self.epsilon))
