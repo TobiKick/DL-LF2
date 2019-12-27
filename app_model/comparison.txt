@@ -1,0 +1,13 @@
+17 wins
+after 32 episodes
+with the model_100
+
+
+23 wins
+after 41 episodes
+with the model_200
+
+
+x wins
+after y episodes
+with the model_400
