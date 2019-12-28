@@ -1,0 +1,13 @@
+38 wins
+for 100 episodes
+with model_100 and eps_decay_0.99
+
+
+7 wins
+for 100 episodes
+with model_200 and eps_decay_0.99
+
+
+0 wins
+for 100 episodes
+with model_400 and eps_decay_0.99
