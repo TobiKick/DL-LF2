@@ -31,8 +31,8 @@ sys.path.append(os.path.abspath('..'))
 EPISODES = 100
 TIME_MAX = 750
 LOAD_PROGRESS_FROM_MODEL = True
-SAVE_PROGRESS_TO_MODEL = True
-HEADLESS = True
+SAVE_PROGRESS_TO_MODEL = False
+HEADLESS = False
 TRAINING = False
 
 ############################# SETUP THE DEEP Q AGENT ########################################################
@@ -105,13 +105,13 @@ class DQNAgent:
 
     def saveModel(self, wins, e):
         #self.model.save_weights("app_model/model.h5")
-        with open("app_model/stats_COMPARISON_400.txt", "w", newline="\n", encoding="utf-8") as txt_file:
+        with open("app_model/stats.txt", "w", newline="\n", encoding="utf-8") as txt_file:
             txt_file.writelines([str(self.epsilon), "\n" + str(self.totalEpisodes) + "\n" + str(wins), "\n" + str(e)])
         print("Saved model to disk")
 
     def loadModel(self):
-        self.model.load_weights("app_model/eps_decay_0.99/model_400.h5")
-        with open("app_model/eps_decay_0.99/stats_400.txt", "r") as txt_file:
+        self.model.load_weights("app_model/model.h5")
+        with open("app_model/stats.txt", "r") as txt_file:
             self.epsilon = float(txt_file.readline())
             self.totalEpisodes = int(txt_file.readline())
         print("Epsilon: " + str(self.epsilon))
