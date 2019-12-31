@@ -28,7 +28,7 @@ args = parser.parse_args()
 sys.path.append(os.path.abspath('..'))
 
 
-EPISODES = 100
+EPISODES = 1
 TIME_MAX = 750
 LOAD_PROGRESS_FROM_MODEL = True
 SAVE_PROGRESS_TO_MODEL = False
@@ -110,8 +110,8 @@ class DQNAgent:
         print("Saved model to disk")
 
     def loadModel(self):
-        self.model.load_weights("app_model/model.h5")
-        with open("app_model/stats.txt", "r") as txt_file:
+        self.model.load_weights("app_model/eps_decay_0.99/model_200.h5")
+        with open("app_model/eps_decay_0.99/stats_200.txt", "r") as txt_file:
             self.epsilon = float(txt_file.readline())
             self.totalEpisodes = int(txt_file.readline())
         print("Epsilon: " + str(self.epsilon))
@@ -140,6 +140,7 @@ if __name__ == "__main__":
                       headless=HEADLESS,
                       versusPlayer=False) # versusPlayer= False means Agent is playing against bot instedad of user
 
+    env.start_recording()
     state_size_x = env.observation_space.n[0]
     state_size_y = env.observation_space.n[1]
     print("state_size: (" + str(state_size_x) + ", " + str(state_size_y) + ")")
@@ -212,3 +213,6 @@ if __name__ == "__main__":
             print("# Wins: " + str(wins) + ", # Episodes: " + str(e+1) + ", Winning Rate: " + str(winningRate))
             print("# Current epsilon: " + str(agent.epsilon))
             agent.saveModel(wins, e+1)
+
+    env.stop_recording()
+    env.save_recording('DQN_200.mp4')
