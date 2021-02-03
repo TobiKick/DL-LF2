@@ -22,9 +22,9 @@ In this project I could demonstrate that the A2C approach clearly outperformed D
 • LF2 environment: https://github.com/elvisyjlin/lf2gym
 
 ## Project Setup
-• **sh setup.sh** Downloads the open source LF2 from Project F and make it trainable (see here) <br/>
-• **Install Python 3**Install Python 3 and get all dependencies <br/>
-• **pip3 install -r requirements.txt** Install required packages <br/>
-• **"python app.py"** Let your code run <br/>
+• **sh setup.sh** - downloads the open source LF2 from Project F and make it trainable (see here) <br/>
+• **Install Python 3** - installs Python 3 and get all dependencies <br/>
+• **pip3 install -r requirements.txt** - installs the required packages <br/>
+• **python app.py** - lets your code run <br/>
 
 
