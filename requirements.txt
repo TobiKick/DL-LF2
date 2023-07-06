@@ -2,7 +2,7 @@ image
 matplotlib
 numpy
 opencv-python
-scipy==1.2.0
+scipy==1.10.0
 selenium==3.8.0
 pillow
 keras
